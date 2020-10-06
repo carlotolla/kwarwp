@@ -43,4 +43,4 @@ def main(vitollino, medidas):
         
     
 if __name__ == "__main__":
-    main()
+    main(Jogo)
