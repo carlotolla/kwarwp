@@ -8,7 +8,7 @@ Changelog
 ---------
 .. versionadded::    20.08.b1
         Testa fila e execução passo a passo.
-        
+
 .. versionadded::    20.07
         classe Test_Kwarwp.
 
@@ -35,7 +35,12 @@ from kwarwp.kwarapp import Kwarwp, Indio, JogoProxy, main
 from kwarwp.kwarwpart import Piche, Vazio, Oca, Tora
 from kwarwp.main import main as mn, Kaiowa
 #sys.path.insert(0, os.path.abspath('../../libs'))
-
+MAPA_INICIO = """
+@....&
+......
+......
+.#.^..
+"""
 class Test_Kwarwp(TestCase):
     """ Jogo para ensino de programação.
     
@@ -65,6 +70,9 @@ class Test_Kwarwp(TestCase):
                 cena.ocupa(self) if cena else None
                 self.img, self.x, self.y, self.w, self.h, self.vai = img, x, y, w, h, vai
                 self.destino, self._pos, self._siz = [None]*3
+                self.fala_ = ""
+            def fala(self, texto):
+                self.fala_ = texto
             def ocupa(self, destino=None, pos=(0, 0)):
                 self.pos = pos
                 # print(f"FakeElemento ocupa {destino} {self.pos}")
@@ -87,7 +95,7 @@ class Test_Kwarwp(TestCase):
         self.v = MagicMock(name="Vitollino")
         self.v().c = MagicMock(name="Vitollino_cria")
         self.v().a = self.v().e = self.e = FakeElemento
-        self.k = Kwarwp(self.v)
+        self.k = Kwarwp(self.v, mapa=MAPA_INICIO)
         Vazio.VITOLLINO.a = FakeElemento
         self.t = FakeTaba()
         self.LADO = Vazio.LADO
@@ -105,7 +113,7 @@ class Test_Kwarwp(TestCase):
         self.assertEquals(0, len(krw.v.comandos), f"but indio cmd: {krw.v.comandos}")
         self.assertEquals(10, len(io.vitollino.comandos), f"but indio cmd: {io.vitollino.comandos}")
         self.assertEquals(10, len(ia.vitollino.comandos), f"but india cmd: {ia.vitollino.comandos}")
-        
+
     def testa_executa_proxy_indio(self):
         """ Cria o ambiente proxy com um índio."""
         krw = mn(self.v, {})
@@ -122,7 +130,7 @@ class Test_Kwarwp(TestCase):
         self.assertEquals(0, len(krw.v.comandos), f"but indio cmd: {krw.v.comandos}")
         #self.assertEquals(10, len(io.vitollino.comandos), f"but indio cmd: {io.vitollino.comandos}")
         self.assertEquals(10, len(io.indio.comandos), f"but indio cmd: {io.indio.comandos}")
-        
+
     def testa_cria(self):
         """ Cria o ambiente de programação Kwarwp."""
         cena = self.k.cria()
@@ -149,6 +157,43 @@ class Test_Kwarwp(TestCase):
         self.assertIsInstance(vaga_tora.ocupante,  Tora, f"but vaga_tora was {vaga_tora.ocupante}")
         self.assertEquals(vaga_tora.vazio.destino, tora)
         
+    def testa_empurra_tora(self):
+        """ Vai até a tora e empurra."""
+        cena = self.k.cria()
+        vaga_tora = self.k.taba[1, 3]
+        self.assertEquals(vaga_tora.taba,  self.k, f"but taba was {vaga_tora.taba}")
+        tora = vaga_tora.ocupante
+        pos = tora.posicao
+        self.assertEquals((1, 3),  pos, f"but last pos was {pos}")
+        indio = self.k.o_indio
+        indio.esquerda()
+        indio.anda()
+        pos = indio.posicao
+        self.assertEquals((2, 3),  pos, f"but indio pos was {pos}")
+        vaga = indio.vaga
+        indio.empurra()
+        pos = tora.posicao
+        self.assertEquals((0, 3),  pos, f"but tora pos was {pos}")
+        self.assertEquals(vaga.ocupante,  NULO, f"but vaga ocupante was {vaga.ocupante}")
+        vaga = indio.vaga
+        indio.empurra()
+        pos = tora.posicao
+        self.assertEquals((0, 3),  pos, f"but tora new pos was {pos}")
+        self.assertEquals(vaga.ocupante,  indio, f"but vaga new  ocupante {vaga.ocupante}")
+        vaga = tora.vaga
+        indio.pega()
+        pos = tora.posicao
+        self.assertEquals((1, 3),  pos, f"but tora taken pos was {pos}")
+        self.assertEquals(vaga.ocupante,  NULO, f"but vaga taken  ocupante {vaga.ocupante}")
+        self.assertEquals(tora.vaga,  indio, f"but tora vaga {tora.vaga}")
+        # vaga = tora.vaga
+        indio.larga()
+        pos = tora.posicao
+        self.assertEquals((0, 3),  pos, f"but tora drop pos was {pos}")
+        self.assertEquals(vaga.ocupante,  tora, f"but vaga drop  ocupante {vaga.ocupante}")
+        self.assertEquals(tora.vaga,  vaga, f"but tora drop vaga {tora.vaga}")
+        return indio, tora
+
     def _pega_tora(self):
         """ Vai até a tora e pega."""
         vaga_tora = self.k.taba[1, 3]
@@ -165,6 +210,24 @@ class Test_Kwarwp(TestCase):
         self.assertEquals((2, 3),  pos, f"but tora pos was {pos}")
         return indio, tora
         
+    def _pega_tora_elimina_piche(self):
+        """ Vai até a tora e pega e usa para eliminar o piche."""
+        cena = self.k.cria()
+        l = self.LADO
+        indio = self.k.o_indio
+        vaga_tora = self.k.taba[2, 3]
+        tora = Tora("", x=0, y=0, cena=cena, taba=self.k)
+        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=tora)
+        vaga_tora = self.k.taba[(2, 3)] = vaga
+        indio.pega()
+        indio.direita()
+        piche = Piche("", x=0, y=0, cena=cena, taba=self.k)
+        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=piche)
+        vaga_piche = self.k.taba[(3,2)] = vaga
+        indio.larga()
+        indio.pega()
+        self.assertEquals(vaga_piche.vazio,  vaga_piche, f"but vazio was {vaga_piche.vazio}")
+
     def testa_pega_tora(self):
         """ Vai até a tora e pega."""
         cena = self.k.cria()
@@ -180,7 +243,7 @@ class Test_Kwarwp(TestCase):
         pos = tora.posicao
         self.assertEquals((1, 3),  pos, f"but tora pos was {pos}")
         coisa = Tora("", x=0, y=0, cena=cena, taba=self.k)
-        vaga = Vazio("", x=0*l, y=3*l, cena=cena, ocupante=coisa)
+        vaga = Vazio("", x=0*l, y=3*l, cena=cena, ocupante=coisa, taba=self.k)
         vazio = self.k.taba[(0,3)] = vaga
         indio.pega()
         pos = tora.posicao
@@ -204,11 +267,11 @@ class Test_Kwarwp(TestCase):
         indio = self.k.o_indio
         indio.pega()
         coisa = Oca("", x=0, y=0, cena=cena, taba=self.k)
-        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=coisa)
+        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=coisa, taba=self.k)
         vazio = self.k.taba[(3,2)] = vaga
         indio.pega()
         coisa = Piche("", x=0, y=0, cena=cena, taba=self.k)
-        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=coisa)
+        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=coisa, taba=self.k)
         vazio = self.k.taba[(3,2)] = vaga
         indio.pega()
         indio.esquerda()
@@ -253,7 +316,7 @@ class Test_Kwarwp(TestCase):
         l = self.LADO
         indio = self.k.o_indio
         piche = Piche("", x=0, y=0, cena=cena, taba=ftaba)
-        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=piche)
+        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=piche, taba=ftaba)
         vazio = self.k.taba[(3,1)] = vaga
         self.assertIsInstance(vazio.ocupante, Piche, f"but vaga was {type(vazio.ocupante)}")
         pos = piche.posicao
@@ -274,7 +337,7 @@ class Test_Kwarwp(TestCase):
         l = self.LADO
         indio = self.k.o_indio
         oca = Oca("", x=0, y=0, cena=cena, taba=ftaba)
-        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=oca)
+        vaga = Vazio("", x=3*l, y=2*l, cena=cena, ocupante=oca, taba=ftaba)
         vazio = self.k.taba[(3,1)] = vaga
         self.assertIsInstance(vazio.ocupante, Oca, f"but vaga was {type(vazio.ocupante)}")
         pos = oca.posicao
@@ -330,7 +393,7 @@ class Test_Kwarwp(TestCase):
         piche = self.elts[self.PICHE]
         self.assertIsInstance(vaga_piche.ocupante,  Piche, f"but vaga_piche was {vaga_piche.ocupante}")
         self.assertEquals(vaga_piche.vazio.elt.destino, piche, f"but vaga_piche.vazio was {vaga_piche.vazio.elt.destino}")
-    
+
     def testa_cria_jogo_proxy(self):
         """Cria um proxy para o Elemento Jogo"""
         x = JogoProxy(vitollino=self.v())
@@ -340,7 +403,7 @@ class Test_Kwarwp(TestCase):
         self.assertIsInstance(elt.elt, self.e)
         self.assertEquals(999, self.elts["_IMAGEM_ELT_"].x)
         self.assertEquals(cena, self.elts["_IMAGEM_ELT_"].cena)
-    
+
     def testa_kwarwp_com_jogo_proxy(self):
         """Cria kwarwp com um proxy para o Elemento Jogo"""
         x = JogoProxy(vitollino=self.v())
@@ -348,7 +411,7 @@ class Test_Kwarwp(TestCase):
         cena = krp.cria()
         self.assertIn("Vitollino_cria",  str(cena), cena)
         self.assertIn(self.INDIO, self.elts)
-        
+
     def testa_cria_piche_oca_proxy(self):
         """ Cria o piche e a oca com a fábrica e jogo proxy."""
         JogoProxy.COMANDOS, JogoProxy.ATIVA = [], False
@@ -398,7 +461,7 @@ class Test_Kwarwp(TestCase):
         y.executa()
         self.assertEquals(0, len(y.comandos), f"mas a pilha ficou ainda {y.comandos}")
         self.assertEquals(el1.elt,  vag.elt.destino)
-        
+
     def testa_avanca_passo_a_passo(self):
         """Avança a execução do roteiro do índio passo a passo."""
         num_comandos = 10

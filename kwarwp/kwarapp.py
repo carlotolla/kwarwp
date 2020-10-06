@@ -42,7 +42,7 @@
 
 """
 from collections import namedtuple as nt, deque
-from kwarwp.kwarwpart import Vazio, Piche, Oca, Tora, NULO
+from kwarwp.kwarwpart import Vazio, Piche, Oca, Tora, Pedra, NULO
 
 IMGUR = "https://imgur.com/"
 """Prefixo do site imgur."""
@@ -79,6 +79,9 @@ class JogoProxy():
                 ocupante.pos = pos
                 # print(f"AdaptaElemento pos: {self.pos}")
                 super().ocupa(ocupante) if ocupante else None
+                
+            def fala(self, texto):
+                self.elt.html = texto
 
         self.v = vitollino
         self.proxy = proxy or self
@@ -281,6 +284,21 @@ class Indio():
     def anda(self):
         """Objeto tenta sair, tem que consultar a vaga onde está"""
         self.vaga.sair()      
+        
+    def empurra(self):
+        """Objeto tenta sair, tem que consultar a vaga onde está"""
+        # self.vaga.sair() # esta parte vai ser feita mais tarde.
+        # print("Estou tentanto empurrar para a posição", self.posicao[0]+self.azimute.x, self.posicao[1]+self.azimute.y)
+        
+        # de resto o código é semelhante ao _anda
+        # TODO refatorar o método _anda e empurra, pois tem código duplicado
+        destino = (self.posicao[0]+self.azimute.x, self.posicao[1]+self.azimute.y)
+        """A posição para onde o índio vai depende do vetor de azimute corrente"""
+        taba = self.taba.taba
+        if destino in taba:
+            vaga = taba[destino]
+            """Recupera na taba a vaga para a qual o índio irá se transferir"""
+            vaga.empurrar(self, self.azimute)
 
     def pega(self):
         """tenta pegar o objeto que está diante dele"""
@@ -341,7 +359,7 @@ class Indio():
         """
         pass
          
-    def executa(self):
+    def _executa(self):
         """ Roteiro do índio. Conjunto de comandos para ele executar.
         """
         self.esquerda()
@@ -354,6 +372,12 @@ class Indio():
         self.esquerda()
         self.anda()
         self.larga()
+         
+    def executa(self):
+        """ Roteiro do índio. Conjunto de comandos para ele executar.
+        """
+        self.direita()
+        self.empurra()
         
     def passo(self):
         self.indio.executa()
@@ -397,8 +421,10 @@ class Kwarwp():
         :param mapa: Um texto representando o mapa do desafio.
         :param medidas: Um dicionário usado para redimensionar a tela.
     """
+    KW = None
     
     def __init__(self, vitollino=None, mapa=None, medidas={}, indios=()):
+        Kwarwp.KW = self
         Vazio.VITOLLINO = self.v = vitollino()
         self.vitollino = vitollino
         """Referência estática para obter o engenho de jogo."""
@@ -431,6 +457,7 @@ class Kwarwp():
         "^": Fab(self.indio, f"{IMGUR}UCWGCKR.png"), # INDIO
         "`": Fab(self.indio, f"{IMGUR}nvrwu0r.png"), # INDIA
         "p": Fab(self.indio, f"{IMGUR}HeiupbP.png"), # PAJE
+        "¨": Fab(self.apedra, f"{IMGUR}Sx3OH66.png"), # PEDRA
         ".": Fab(self.vazio, f"{IMGUR}npb9Oej.png"), # VAZIO
         "_": Fab(self.coisa, f"{IMGUR}sGoKfvs.jpg"), # SOLO
         "#": Fab(self.atora, f"{IMGUR}0jSB27g.png"), # TORA
@@ -456,12 +483,14 @@ class Kwarwp():
             for j, linha in enumerate(mapa) for i, imagem in enumerate(linha)}
         """Posiciona os elementos segundo suas posições i, j na matriz mapa"""
         cena.vai()
+        Kwarwp.KW.fala(Vazio.LADO)
+        #self.fala(Vazio.LADO)
         return cena
         
     def fala(self, texto=""):
         """ O Kwarwp é aqui usado para falar algo que ficará escrito no céu.
         """
-        self.ceu.elt.html = texto
+        self.ceu.elt.fala(texto)
         pass
         
     def sai(self, *_):
@@ -506,7 +535,21 @@ class Kwarwp():
         Cria uma vaga vazia e coloca o componente dentro dela.
         """
         coisa = Tora(imagem, x=0, y=0, cena=cena, taba=self)
-        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=coisa)
+        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=coisa, taba=self)
+        coisa.vazio.vai = lambda *_: self.o_indio.larga()
+        return vaga
+        
+    def apedra(self, imagem, x, y, cena):
+        """ Cria uma pedra na arena do Kwarwp na posição definida.
+
+        :param x: coluna em que o elemento será posicionado.
+        :param y: linha em que o elemento será posicionado.
+        :param cena: cena em que o elemento será posicionado.
+        
+        Cria uma vaga vazia e coloca o componente dentro dela.
+        """
+        coisa = Pedra(imagem, x=0, y=0, cena=cena, taba=self)
+        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=coisa, taba=self)
         coisa.vazio.vai = lambda *_: self.o_indio.larga()
         return vaga
         
@@ -520,7 +563,7 @@ class Kwarwp():
         Cria uma vaga vazia e coloca o componente dentro dela.
         """
         coisa = Oca(imagem, x=0, y=0, cena=cena, taba=self)
-        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=coisa)
+        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=coisa, taba=self)
         return vaga
         
     def barra(self, imagem, x, y, cena):
@@ -533,7 +576,7 @@ class Kwarwp():
         Cria uma vaga vazia e coloca o componente dentro dela.
         """
         coisa = Piche(imagem, x=0, y=0, cena=cena, taba=self)
-        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=coisa)
+        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=coisa, taba=self)
         return vaga
         
     def coisa(self, imagem, x, y, cena):
@@ -546,7 +589,7 @@ class Kwarwp():
         Cria uma vaga vazia e coloca o componente dentro dela.
         """
         coisa = Indio(imagem, x=0, y=0, cena=cena, taba=self)
-        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=coisa)
+        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=coisa, taba=self)
         return vaga
         
     def vazio(self, imagem, x, y, cena):
@@ -556,7 +599,7 @@ class Kwarwp():
         :param y: linha em que o elemento será posicionado.
         :param cena: cena em que o elemento será posicionado.
         """
-        vaga = Vazio(imagem, x=x, y=y, cena=cena, ocupante=NULO)
+        vaga = Vazio(imagem, x=x, y=y, cena=cena, ocupante=NULO, taba=self)
         """ O Kwarwp é aqui usado como um ocupante nulo, que não ocupa uma vaga vazia."""
         return vaga
         
@@ -573,7 +616,7 @@ class Kwarwp():
         """
         self.o_indio.indio.vai = lambda *_: self.o_indio.pega()
         """o índio.vai é associado ao seu próprio metodo pega"""
-        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=self.o_indio)
+        vaga = Vazio("", x=x, y=y, cena=cena, ocupante=self.o_indio, taba=self)
         self.os_indios.append(self.o_indio)
         self.indios.rotate()
         """recebe a definição do próximo índio"""
