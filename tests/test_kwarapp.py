@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.abspath('../'))
 from unittest import TestCase
 from unittest.mock import MagicMock
 from kwarwp.kwarapp import Kwarwp, Indio, JogoProxy, main
-from kwarwp.kwarwpart import Piche, Vazio, Oca, Tora
+from kwarwp.kwarwpart import Piche, Vazio, Oca, Tora, NULO
 from kwarwp.main import main as mn, Kaiowa
 #sys.path.insert(0, os.path.abspath('../../libs'))
 MAPA_INICIO = """

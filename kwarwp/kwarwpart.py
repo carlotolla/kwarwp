@@ -84,7 +84,7 @@ class Vazio():
         """
         self._nada.ocupa(self.ocupante)
         """a figura do ocupante vai ser anexada ao elemento nada, que não é apresentado"""
-        self.ocupante = self
+        self.ocupante = NULO
         self.acessa = self._acessa
         self.sair = self._sair
 
@@ -172,13 +172,6 @@ class Vazio():
         No caso do espaço vazio, não faz nada.
         """
         pass
-        
-    def sai(self):
-        """ Pedido por um ocupante para que desocupe a posição nela.
-        """
-        self.ocupante = self
-        self.acessa = self._acessa
-        self.sair = self._sair
 
 
 class Piche(Vazio):

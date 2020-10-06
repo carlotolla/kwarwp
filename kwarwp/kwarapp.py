@@ -285,6 +285,10 @@ class Indio():
         """Objeto tenta sair, tem que consultar a vaga onde está"""
         self.vaga.sair()      
         
+    def empurrar(self, *_):
+        """Não pode empurrar indio, ele ignora"""
+        pass
+        
     def empurra(self):
         """Objeto tenta sair, tem que consultar a vaga onde está"""
         # self.vaga.sair() # esta parte vai ser feita mais tarde.
@@ -359,7 +363,7 @@ class Indio():
         """
         pass
          
-    def _executa(self):
+    def executa(self):
         """ Roteiro do índio. Conjunto de comandos para ele executar.
         """
         self.esquerda()
@@ -373,7 +377,7 @@ class Indio():
         self.anda()
         self.larga()
          
-    def executa(self):
+    def _executa(self):
         """ Roteiro do índio. Conjunto de comandos para ele executar.
         """
         self.direita()
